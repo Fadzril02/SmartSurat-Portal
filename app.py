@@ -7,15 +7,28 @@ import os
 import re
 import tempfile
 import uuid
+import platform  # <--- WAJIB: Untuk kesan Windows vs Linux
+import shutil    # <--- WAJIB: Untuk cari Tesseract di Cloud
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+import pytesseract   # <--- Pastikan ini diimport di sini
 
+# --- SmartSurat • Team Invictus (JKR) ---
+# Logic ini akan pilih path yang betul secara automatik
+if platform.system() == "Windows":
+    # Guna path ini jika buka di laptop Nazmi
+    TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    # Guna path ini jika buka di Live Link (Linux/GitHub)
+    TESSERACT_CMD = shutil.which("tesseract")
 
-# --- SmartSurat • Team Invictus (JKR) — 100% local processing ---
-TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# Tetapkan path kepada library pytesseract
+if TESSERACT_CMD:
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+
 TEMP_STORAGE_DIR = "temp_storage"
 DATA_LOG_PATH = "data_log.json"
 
