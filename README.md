@@ -1,36 +1,69 @@
-SmartSurat: Invictus Edition
-"Segalanya Lebih Cekap" — A secure, local-first digital letter management and tracking system for JKR 2026.
+📖 Panduan Penggunaan Sistem (User Guide)
+Sistem SmartSurat menggunakan aliran kerja empat peringkat bagi memastikan setiap surat diproses dengan teliti dan telus.
 
-SmartSurat is a high-performance Streamlit application designed to eliminate "lost letters" and manual data entry errors. By leveraging Local OCR and a persistent JSON database, it provides a seamless end-to-end workflow from initial upload to department-level confirmation.
+1. Log Masuk (Login)
+Layari pautan aplikasi (Live Link).
 
-🚀 Key Features
-🔐 1. Multi-Role Access Control (RBAC)
-The system is divided into four distinct professional roles to ensure data integrity and security:
+Sistem memerlukan ID Pengguna dan No. Kad Pengenalan untuk pengesahan.
 
-User (Staff): Digitalize incoming physical mail and track personal upload status.
+Nota: Rujuk jadual di bawah untuk akaun demo.
 
-Admin (Clerk): Automated data extraction using Tesseract OCR with manual verification.
+2. Peranan: Pengguna (Staff/Pembantu Pejabat)
+Akaun Demo: ID: fitri_user | No. KP: 950303141122
 
-Wakil Penerima (Dept Rep): Exclusive inbox for department-specific letter acknowledgment.
+Tujuan: Mendigitalkan surat fizikal yang baru sampai ke pejabat.
+Langkah:
 
-Senior Admin (Management): Real-time analytics dashboard and professional Excel reporting.
+Pergi ke menu "Muat Naik Dokumen".
 
-🧠 2. Intelligent Automation
-Smart OCR: Automatically extracts Nombor Rujukan, Tarikh Surat, and Perkara from JKR documents.
+Pilih atau seret fail PDF/Imej surat ke dalam kotak muat naik.
 
-Instant Persistence: Uses a shared data_log.json database, allowing multiple users to see updates across different tabs/browsers in real-time.
+Sistem akan menyimpan fail ke dalam storan dan merekod masa (Tarikh Direkod) secara automatik.
 
-🛡️ 3. Privacy & Security
-100% Local Processing: No external API calls. Your data never leaves the JKR network.
+Status surat akan bermula sebagai "Baru".
 
-Atomic Writes: Uses a temporary-file-swap system to prevent data corruption during simultaneous access.
+3. Peranan: Pentadbir (Admin/Kerani)
+Akaun Demo: ID: azuan_admin | No. KP: 850101145566
 
-🛠️ System Architecture
-The workflow ensures that every letter is tracked through its entire lifecycle:
-Upload (Baru) → Verified (Diminitkan) → Acknowledge (Diterima).
+Tujuan: Mengesah maklumat surat secara automatik (OCR) dan mengagihkan tugas.
+Langkah:
 
-💻 Installation & Local Setup
-Prerequisites
-Python 3.9+
+Lihat senarai surat berstatus "Baru".
 
-Tesseract OCR Engine installed at C:\Program Files\Tesseract-OCR
+Klik butang "Run OCR". Sistem akan menjalankan imbasan dan membaca kandungan surat (No. Rujukan & Tarikh).
+
+Semak maklumat yang diekstrak. Anda boleh membetulkan teks pada ruangan input jika perlu.
+
+Pilih "Bahagian yang Diminitkan" daripada menu lungsur (Contoh: Bahagian Jalan).
+
+Klik "Simpan & Agih". Status akan bertukar kepada "Diminitkan".
+
+4. Peranan: Wakil Penerima (Wakil Bahagian)
+Akaun Demo: ID: hafiqi_rep | No. KP: 920404143344
+
+Tujuan: Mengesahkan penerimaan surat fizikal/digital di peringkat bahagian masing-masing.
+Langkah:
+
+Log masuk untuk melihat surat yang hanya dikhususkan untuk bahagian anda sahaja.
+
+Klik butang "Sahkan Penerimaan" sebagai tanda surat telah selamat sampai ke tangan wakil bahagian.
+
+Status surat bertukar kepada "Diterima".
+
+5. Peranan: Pentadbir Kanan (Management)
+Akaun Demo: ID: saritha_senior | No. KP: 800202147788
+
+Tujuan: Memantau prestasi keseluruhan dan menghasilkan laporan rasmi.
+Langkah:
+
+Lihat Dashboard untuk statistik keseluruhan (Berapa surat yang masih "Baru" vs yang sudah "Diterima").
+
+Gunakan bar carian untuk mencari surat spesifik berdasarkan Nombor Rujukan.
+
+Klik butang "Muat Turun & Cetak" untuk menghasilkan laporan lengkap dalam format Excel untuk urusan mesyuarat.
+
+Peranan,ID Pengguna,No. Kad Pengenalan
+Staff (Upload),fitri_user,950303141122
+Admin (OCR),azuan_admin,850101145566
+Wakil Bahagian,hafiqi_rep,920404143344
+Pengurusan,saritha_senior,800202147788
