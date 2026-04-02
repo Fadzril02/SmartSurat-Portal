@@ -25,6 +25,27 @@
     "ic": "920404143344",
     "name": "Muhamad Hafiqi bin Saleh",
     "role": "Wakil Penerima",
-    "dept": "Bahagian Jalan"
+    "dept": "Jalan"
+  },
+  {
+    "id": "daniel_rep",
+    "ic": "930505142233",
+    "name": "Ahmad Daniel bin Idris",
+    "role": "Wakil Penerima",
+    "dept": "Bangunan"
+  },
+  {
+    "id": "adlan_rep",
+    "ic": "940606145544",
+    "name": "Adlan Hazim bin Zulkifli",
+    "role": "Wakil Penerima",
+    "dept": "Korporat"
+  },
+  {
+    "id": "amir_rep",
+    "ic": "910707146655",
+    "name": "Amir bin Hasan",
+    "role": "Wakil Penerima",
+    "dept": "Strategik"
   }
 ]
