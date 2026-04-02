@@ -1,0 +1,30 @@
+[
+  {
+    "id": "azuan_admin",
+    "ic": "850101145566",
+    "name": "Mohamed Azuan bin Wahari",
+    "role": "Admin",
+    "dept": "Korporat"
+  },
+  {
+    "id": "saritha_senior",
+    "ic": "800202147788",
+    "name": "Ir. Saritha a/p Ramasindarum",
+    "role": "Senior Admin",
+    "dept": "Pengurusan"
+  },
+  {
+    "id": "fitri_user",
+    "ic": "950303141122",
+    "name": "Nurfitriyani binti Mohd Aris",
+    "role": "User",
+    "dept": "Pentadbiran"
+  },
+  {
+    "id": "hafiqi_rep",
+    "ic": "920404143344",
+    "name": "Muhamad Hafiqi bin Saleh",
+    "role": "Wakil Penerima",
+    "dept": "Bahagian Jalan"
+  }
+]
