@@ -1,51 +1,32 @@
 [
   {
-    "id": "azuan_admin",
-    "ic": "850101145566",
-    "name": "Mohamed Azuan bin Wahari",
+    "id": "admin_invictus",
+    "ic": "800101011234",
+    "name": "Ahmad Zulkarnain bin Hassan",
     "role": "Admin",
-    "dept": "Korporat"
+    "dept": "Pengurusan",
+    "email": "admin.invictus@jkr.gov.my",
+    "jawatan": "Pentadbir Sistem",
+    "gred": "N54"
   },
   {
-    "id": "saritha_senior",
-    "ic": "800202147788",
-    "name": "Ir. Saritha a/p Ramasindarum",
-    "role": "Senior Admin",
-    "dept": "Pengurusan"
+    "id": "staff_nurul",
+    "ic": "900202021456",
+    "name": "Nurul Aina binti Razali",
+    "role": "Staff",
+    "dept": "Pentadbiran",
+    "email": "nurul.staff@jkr.gov.my",
+    "jawatan": "Pembantu Tadbir",
+    "gred": "N32"
   },
   {
-    "id": "fitri_user",
-    "ic": "950303141122",
-    "name": "Nurfitriyani binti Mohd Aris",
-    "role": "User",
-    "dept": "Pentadbiran"
-  },
-  {
-    "id": "hafiqi_rep",
-    "ic": "920404143344",
-    "name": "Muhamad Hafiqi bin Saleh",
-    "role": "Wakil Penerima",
-    "dept": "Jalan"
-  },
-  {
-    "id": "daniel_rep",
-    "ic": "930505142233",
-    "name": "Ahmad Daniel bin Idris",
-    "role": "Wakil Penerima",
-    "dept": "Bangunan"
-  },
-  {
-    "id": "adlan_rep",
-    "ic": "940606145544",
-    "name": "Adlan Hazim bin Zulkifli",
-    "role": "Wakil Penerima",
-    "dept": "Korporat"
-  },
-  {
-    "id": "amir_rep",
-    "ic": "910707146655",
-    "name": "Amir bin Hasan",
-    "role": "Wakil Penerima",
-    "dept": "Strategik"
+    "id": "staff_hakim",
+    "ic": "910303031789",
+    "name": "Muhamad Hakim bin Yusof",
+    "role": "Staff",
+    "dept": "Pentadbiran",
+    "email": "hakim.staff@jkr.gov.my",
+    "jawatan": "Pembantu Tadbir",
+    "gred": "N32"
   }
 ]
