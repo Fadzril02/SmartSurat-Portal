@@ -104,8 +104,10 @@ def letters_df(letters: List[Dict[str, Any]]) -> pd.DataFrame:
         "letter_id",
         "status",
         "tarikh_direkod",
+        "tarikh_daftar",
         "owner_id",
         "tarikh_surat",
+        "tarikh_terima",
         "tarikh_cop_terima",
         "nombor_rujukan",
         "perkara",
@@ -134,25 +136,31 @@ def page_muat_naik(user: User) -> None:
 
     with tab_file:
         uploaded = st.file_uploader("Pilih fail", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=False)
-        if uploaded:
-            ensure_dirs()
-            saved_name = stamp_filename(uploaded.name)
-            saved_path = os.path.join(TEMP_STORAGE_DIR, saved_name)
-            with open(saved_path, "wb") as f:
-                f.write(uploaded.getbuffer())
 
-            record = new_letter_record(
-                uploaded_by=user,
-                original_filename=uploaded.name,
-                saved_path=saved_path,
-                mime_type=getattr(uploaded, "type", "") or "",
-            )
-            letters = letters_get()
-            letters.insert(0, record)
-            letters_save_all(letters)
-            upload_letter_to_drive_and_store(record["letter_id"], saved_path)
+        if uploaded is not None:
+            raw_bytes = uploaded.getbuffer().tobytes()
+            digest = hashlib.sha256(raw_bytes).hexdigest()
 
-            st.success(f"Berjaya dimuat naik. ID Surat: **{record['letter_id']}**")
+            if st.session_state.get("pending_upload_digest") != digest:
+                ensure_dirs()
+                saved_name = stamp_filename(uploaded.name)
+                saved_path = os.path.join(TEMP_STORAGE_DIR, saved_name)
+                with open(saved_path, "wb") as f:
+                    f.write(raw_bytes)
+
+                st.session_state.pending_upload = {
+                    "source": "file",
+                    "digest": digest,
+                    "file_name": uploaded.name,
+                    "file_path": saved_path,
+                    "mime_type": getattr(uploaded, "type", "") or "",
+                }
+                st.session_state.pending_upload_digest = digest
+                st.session_state.pending_ocr_text = ""
+                st.session_state.pending_extracted = {}
+                st.session_state.pending_preview_image = None
+
+            _render_review_and_edit(user)
 
     with tab_cam:
         st.markdown(
@@ -160,7 +168,9 @@ def page_muat_naik(user: User) -> None:
             "meratakan perspektif, dan meningkatkan kontras untuk OCR.</div>",
             unsafe_allow_html=True,
         )
-        shot = st.camera_input("Kamera", label_visibility="collapsed")
+        pad_l, mid, pad_r = st.columns([1, 3, 1])
+        with mid:
+            shot = st.camera_input("Kamera", label_visibility="collapsed")
         if shot is not None:
             raw_bytes = shot.getvalue()
             digest = hashlib.sha256(raw_bytes).hexdigest()
@@ -170,31 +180,31 @@ def page_muat_naik(user: User) -> None:
                 st.error("Tidak dapat membaca imej kamera.")
             else:
                 processed_bgr, used_transform = scan_document_bgr(bgr)
-                st.caption(f"Pemprosesan dokumen: {'Perspektif & ambang adaptif' if used_transform else 'Ambang adaptif (tiada segi empat tepat / fallback)'}")
+                st.caption(
+                    f"Pemprosesan dokumen: {'Perspektif & ambang adaptif' if used_transform else 'Ambang adaptif (tiada segi empat tepat / fallback)'}"
+                )
                 st.image(cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB), use_container_width=True)
 
-                if st.button("Simpan imbasan sebagai surat baru", key="btn_save_camera_scan"):
-                    last = st.session_state.get("last_camera_saved_digest")
-                    if last == digest:
-                        st.warning("Imbasan ini sudah direkod. Ambil gambar baharu jika perlu.")
-                    else:
-                        ensure_dirs()
-                        saved_name = stamp_filename("imbasan_kamera.png")
-                        saved_path = os.path.join(TEMP_STORAGE_DIR, saved_name)
-                        cv2.imwrite(saved_path, processed_bgr)
-                        record = new_letter_record(
-                            uploaded_by=user,
-                            original_filename="imbasan_kamera.png",
-                            saved_path=saved_path,
-                            mime_type="image/png",
-                        )
-                        letters = letters_get()
-                        letters.insert(0, record)
-                        letters_save_all(letters)
-                        upload_letter_to_drive_and_store(record["letter_id"], saved_path)
-                        st.session_state.last_camera_saved_digest = digest
-                        st.success(f"Imbasan disimpan. ID Surat: **{record['letter_id']}**")
-                        st.rerun()
+                # write processed scan to temp, then go into Review & Edit stage
+                ensure_dirs()
+                saved_name = stamp_filename("imbasan_kamera.png")
+                saved_path = os.path.join(TEMP_STORAGE_DIR, saved_name)
+                cv2.imwrite(saved_path, processed_bgr)
+
+                if st.session_state.get("pending_upload_digest") != digest:
+                    st.session_state.pending_upload = {
+                        "source": "camera",
+                        "digest": digest,
+                        "file_name": "imbasan_kamera.png",
+                        "file_path": saved_path,
+                        "mime_type": "image/png",
+                    }
+                    st.session_state.pending_upload_digest = digest
+                    st.session_state.pending_ocr_text = ""
+                    st.session_state.pending_extracted = {}
+                    st.session_state.pending_preview_image = None
+
+                _render_review_and_edit(user)
 
     st.markdown("---")
     st.markdown("### Status Saya")
@@ -211,6 +221,108 @@ def page_muat_naik(user: User) -> None:
     ]
     st.dataframe(df[show_cols], use_container_width=True, hide_index=True)
     st.caption("Aliran status: **Baru** → **Diminitkan** → **Diterima**")
+
+
+def _render_review_and_edit(user: User) -> None:
+    pending = st.session_state.get("pending_upload") or {}
+    if not pending:
+        return
+
+    st.markdown("---")
+    st.markdown("### Review & Edit")
+    st.markdown(
+        '<div class="invictus-sub">Semak hasil OCR, betulkan medan jika perlu, kemudian barulah '
+        'klik <b>Sahkan & Simpan ke Drive</b>. Tiada data akan disimpan sebelum pengesahan.</div>',
+        unsafe_allow_html=True,
+    )
+
+    c0, c1, c2 = st.columns([1, 1, 1.2])
+    with c0:
+        run_ocr = st.button("Jalankan OCR", key="btn_pending_ocr", use_container_width=True)
+    with c1:
+        clear = st.button("Reset Imbasan", key="btn_pending_clear", use_container_width=True)
+    with c2:
+        st.markdown(f"**Fail:** `{pending.get('file_name','')}`")
+
+    if clear:
+        for k in [
+            "pending_upload",
+            "pending_upload_digest",
+            "pending_ocr_text",
+            "pending_extracted",
+            "pending_preview_image",
+        ]:
+            if k in st.session_state:
+                del st.session_state[k]
+        st.rerun()
+
+    if run_ocr:
+        try:
+            with st.spinner("Menjalankan OCR..."):
+                text, _ = ocr_first_page(str(pending.get("file_path", "")))
+            st.session_state.pending_ocr_text = text or ""
+            extracted = extract_fields_from_text(text or "")
+            st.session_state.pending_extracted = extracted or {}
+        except Exception as e:
+            st.error(f"Ralat OCR: {str(e)}")
+            st.stop()
+
+    ocr_text = str(st.session_state.get("pending_ocr_text", "") or "")
+    extracted = st.session_state.get("pending_extracted") or {}
+
+    st.text_area("Hasil Mentah OCR", value=ocr_text, height=220, disabled=False)
+
+    # Defaults (prefer extracted; fallback to blank)
+    d_tarikh_surat = str(extracted.get("tarikh_surat", "") or "")
+    d_tarikh_terima = str(extracted.get("tarikh_terima", "") or extracted.get("tarikh_cop_terima", "") or "")
+    d_ruj = str(extracted.get("nombor_rujukan", "") or "")
+    d_perkara = str(extracted.get("perkara", "") or "")
+
+    with st.form("review_edit_form"):
+        f1, f2 = st.columns(2)
+        with f1:
+            nombor_rujukan = st.text_input("No. Rujukan", value=d_ruj)
+            tarikh_surat = st.text_input("Tarikh Surat (pada surat)", value=d_tarikh_surat, placeholder="DD/MM/YYYY")
+            tarikh_terima = st.text_input("Tarikh Terima (cop/stamp)", value=d_tarikh_terima, placeholder="DD/MM/YYYY")
+        with f2:
+            tarikh_daftar = st.text_input("Tarikh Daftar (sistem)", value=dt.date.today().strftime("%d/%m/%Y"), disabled=True)
+            perkara = st.text_area("Perkara", value=d_perkara, height=120)
+
+        confirm = st.form_submit_button("Sahkan & Simpan ke Drive", use_container_width=True)
+
+    if confirm:
+        # Prevent accidental double-save of same scan/file in same session
+        last = st.session_state.get("last_confirmed_digest")
+        digest = str(pending.get("digest", "") or "")
+        if last and digest and last == digest:
+            st.warning("Rekod ini sudah disimpan. Sila reset atau ambil/muat naik fail baharu.")
+            return
+
+        ensure_dirs()
+        record = new_letter_record(
+            uploaded_by=user,
+            original_filename=str(pending.get("file_name", "") or "fail"),
+            saved_path=str(pending.get("file_path", "") or ""),
+            mime_type=str(pending.get("mime_type", "") or ""),
+        )
+
+        record["ocr_text"] = ocr_text
+        record["nombor_rujukan"] = (nombor_rujukan or "").strip()
+        record["perkara"] = (perkara or "").strip()
+        record["tarikh_surat"] = (tarikh_surat or "").strip()
+        record["tarikh_terima"] = (tarikh_terima or "").strip()
+        record["tarikh_cop_terima"] = record["tarikh_terima"]  # legacy alias
+        record["tarikh_daftar"] = dt.date.today().strftime("%d/%m/%Y")
+        record["owner_id"] = user.id  # enforce ownership
+
+        letters = letters_get()
+        letters.insert(0, record)
+        letters_save_all(letters)
+        upload_letter_to_drive_and_store(record["letter_id"], record["file_path"])
+
+        st.session_state.last_confirmed_digest = digest
+        st.success(f"Disahkan & disimpan. ID Surat: **{record['letter_id']}**")
+        st.rerun()
 
 
 def page_admin(user: User) -> None:
@@ -290,7 +402,11 @@ def page_admin(user: User) -> None:
             bi = DEPT_CANON.index(current_b) + 1 if current_b in DEPT_CANON else 0
             bahagian = st.selectbox("Bahagian", [""] + DEPT_CANON, index=bi, format_func=lambda x: "(pilih)" if x == "" else x)
         with a2:
-            tarikh_cop = st.text_input("Tarikh Cop Terima", value=rec.get("tarikh_cop_terima", ""), placeholder="DD/MM/YYYY")
+            tarikh_cop = st.text_input(
+                "Tarikh Terima (Cop/Stam)",
+                value=rec.get("tarikh_terima", "") or rec.get("tarikh_cop_terima", ""),
+                placeholder="DD/MM/YYYY",
+            )
             perkara = st.text_area("Perkara", value=rec.get("perkara", ""), height=90)
             pengirim = st.text_area("Maklumat Pengirim", value=rec.get("maklumat_pengirim", ""), height=90)
         save = st.form_submit_button("Sahkan & Diminitkan", use_container_width=True)
@@ -306,6 +422,7 @@ def page_admin(user: User) -> None:
             return
         rec = letters[idx3]
         rec["tarikh_surat"] = tarikh_surat.strip()
+        rec["tarikh_terima"] = tarikh_cop.strip()
         rec["tarikh_cop_terima"] = tarikh_cop.strip()
         rec["nombor_rujukan"] = nombor_rujukan.strip()
         rec["perkara"] = perkara.strip()

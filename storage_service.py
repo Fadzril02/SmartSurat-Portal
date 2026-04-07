@@ -157,9 +157,11 @@ def new_letter_record(
     saved_path: str,
     mime_type: str,
 ) -> Dict[str, Any]:
+    tarikh_daftar = dt.date.today().strftime("%d/%m/%Y")
     return {
         "letter_id": str(uuid.uuid4())[:8].upper(),
         "tarikh_direkod": now_ts(),
+        "tarikh_daftar": tarikh_daftar,
         "status": "Baru",
         "uploaded_by": uploaded_by.id,
         "uploaded_by_name": uploaded_by.name,
@@ -170,6 +172,7 @@ def new_letter_record(
         "drive_file_id": "",
         "ocr_text": "",
         "tarikh_surat": "",
+        "tarikh_terima": "",
         "tarikh_cop_terima": "",
         "perkara": "",
         "nombor_rujukan": "",

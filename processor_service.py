@@ -5,7 +5,7 @@ import os
 import platform
 import re
 import shutil
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List, Optional
 
 import numpy as np
 import pytesseract
@@ -21,9 +21,120 @@ if TESSERACT_CMD:
     pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 
-DATE_RE = re.compile(r"\b(\d{2}/\d{2}/\d{4})\b")
 RUJ_RE = re.compile(r"(?:Ruj\.?\s*Kami\s*[:\-]\s*|Ruj(?:ukan)?\s*[:\-]\s*)(.+)", re.IGNORECASE)
 PERKARA_RE = re.compile(r"(?:Perkara\s*[:\-]\s*)(.+)", re.IGNORECASE)
+
+_DATE_DDMMYYYY = re.compile(r"\b(?P<d>\d{1,2})\s*[\/\-.]\s*(?P<m>\d{1,2})\s*[\/\-.]\s*(?P<y>\d{4})\b")
+_DATE_DD_MON_YYYY = re.compile(
+    r"\b(?P<d>\d{1,2})\s*(?P<mon>[A-Za-z]{3,12})\.?\s*(?P<y>\d{4})\b",
+    re.IGNORECASE,
+)
+_MON_MAP = {
+    # Malay
+    "januari": 1,
+    "jan": 1,
+    "februari": 2,
+    "feb": 2,
+    "mac": 3,
+    "mar": 3,  # also English
+    "april": 4,
+    "apr": 4,
+    "mei": 5,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "julai": 7,
+    "july": 7,
+    "ogos": 8,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "okt": 10,
+    "oktober": 10,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dis": 12,
+    "disember": 12,
+    "dec": 12,
+    "december": 12,
+}
+
+
+def _norm_date(d: int, m: int, y: int) -> str:
+    if y < 1900 or y > 2100:
+        return ""
+    if m < 1 or m > 12:
+        return ""
+    if d < 1 or d > 31:
+        return ""
+    return f"{d:02d}/{m:02d}/{y:04d}"
+
+
+def _extract_dates_with_context(lines: List[str]) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for i, l in enumerate(lines):
+        for m in _DATE_DDMMYYYY.finditer(l):
+            dd = int(m.group("d"))
+            mm = int(m.group("m"))
+            yy = int(m.group("y"))
+            s = _norm_date(dd, mm, yy)
+            if s:
+                out.append({"date": s, "line_idx": str(i), "line": l})
+        for m in _DATE_DD_MON_YYYY.finditer(l):
+            dd = int(m.group("d"))
+            mon = (m.group("mon") or "").strip().lower()
+            yy = int(m.group("y"))
+            mm = _MON_MAP.get(mon, 0)
+            s = _norm_date(dd, mm, yy) if mm else ""
+            if s:
+                out.append({"date": s, "line_idx": str(i), "line": l})
+    # de-dup (keep first occurrence)
+    seen = set()
+    dedup: List[Dict[str, str]] = []
+    for it in out:
+        if it["date"] in seen:
+            continue
+        seen.add(it["date"])
+        dedup.append(it)
+    return dedup
+
+
+def _pick_date_near_keywords(
+    candidates: List[Dict[str, str]],
+    lines: List[str],
+    *,
+    keywords: List[str],
+    window: int = 2,
+) -> str:
+    if not candidates:
+        return ""
+    keys = [k.lower() for k in keywords if k]
+    if not keys:
+        return ""
+    scored: List[Tuple[int, int, str]] = []
+    for it in candidates:
+        try:
+            li = int(it.get("line_idx", "0"))
+        except Exception:
+            li = 0
+        best = 0
+        for j in range(max(0, li - window), min(len(lines), li + window + 1)):
+            low = (lines[j] or "").lower()
+            if any(k in low for k in keys):
+                # closer lines score higher
+                dist = abs(j - li)
+                best = max(best, 10 - dist)
+        if best > 0:
+            scored.append((best, li, it["date"]))
+    if not scored:
+        return ""
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return scored[0][2]
 
 
 def clean_line(s: str) -> str:
@@ -32,11 +143,40 @@ def clean_line(s: str) -> str:
 
 def extract_fields_from_text(text: str) -> Dict[str, str]:
     lines = [clean_line(l) for l in (text or "").splitlines() if clean_line(l)]
-    joined = "\n".join(lines)
+    date_candidates = _extract_dates_with_context(lines)
 
-    dates = DATE_RE.findall(joined)
-    tarikh_surat = dates[0] if len(dates) >= 1 else ""
-    tarikh_cop = dates[1] if len(dates) >= 2 else ""
+    tarikh_surat = _pick_date_near_keywords(
+        date_candidates,
+        lines,
+        keywords=[
+            "tarikh",
+            "date",
+            "ruj. kami",  # often near header block
+            "ruj kami",
+            "rujukan",
+        ],
+        window=2,
+    )
+    tarikh_terima = _pick_date_near_keywords(
+        date_candidates,
+        lines,
+        keywords=[
+            "diterima",
+            "cop terima",
+            "cop diterima",
+            "cop",
+            "received",
+            "terima",
+            "cap terima",
+            "stamp",
+        ],
+        window=3,
+    )
+    if not tarikh_surat and date_candidates:
+        tarikh_surat = date_candidates[0]["date"]
+    if not tarikh_terima and len(date_candidates) >= 2:
+        # fallback: second distinct date as "received" when present
+        tarikh_terima = date_candidates[1]["date"]
 
     nombor_rujukan = ""
     perkara = ""
@@ -68,7 +208,8 @@ def extract_fields_from_text(text: str) -> Dict[str, str]:
 
     return {
         "tarikh_surat": tarikh_surat,
-        "tarikh_cop_terima": tarikh_cop,
+        "tarikh_terima": tarikh_terima,
+        "tarikh_cop_terima": tarikh_terima,  # legacy alias
         "perkara": perkara,
         "nombor_rujukan": nombor_rujukan,
         "maklumat_pengirim": maklumat_pengirim,

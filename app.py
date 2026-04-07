@@ -92,6 +92,24 @@ def apply_invictus_theme() -> None:
             border-top: 1px solid rgba(192,192,192,0.2);
             margin: 1.25rem 0;
           }}
+
+          /* --- SmartSurat Scanner: make st.camera_input feel "full screen" --- */
+          div[data-testid="stCameraInput"] {{
+            width: 100% !important;
+            max-width: 1000px !important;
+            margin: 0 auto !important;
+          }}
+          div[data-testid="stCameraInput"] > div {{
+            width: 100% !important;
+          }}
+          div[data-testid="stCameraInput"] video {{
+            width: 100% !important;
+            max-height: 72vh !important;
+            height: auto !important;
+            border: 3px solid {ACCENT_RED};
+            border-radius: 15px;
+            object-fit: cover;
+          }}
         </style>
         """,
         unsafe_allow_html=True,

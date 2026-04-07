@@ -33,7 +33,9 @@ class Letter:
     mime_type: str
     ocr_text: str = ""
     tarikh_surat: str = ""
-    tarikh_cop_terima: str = ""
+    tarikh_terima: str = ""
+    tarikh_daftar: str = ""
+    tarikh_cop_terima: str = ""  # legacy alias (kept for older records / UI)
     perkara: str = ""
     nombor_rujukan: str = ""
     maklumat_pengirim: str = ""
@@ -57,6 +59,8 @@ class Letter:
             "mime_type": self.mime_type,
             "ocr_text": self.ocr_text,
             "tarikh_surat": self.tarikh_surat,
+            "tarikh_terima": self.tarikh_terima,
+            "tarikh_daftar": self.tarikh_daftar,
             "tarikh_cop_terima": self.tarikh_cop_terima,
             "perkara": self.perkara,
             "nombor_rujukan": self.nombor_rujukan,
@@ -73,6 +77,8 @@ class Letter:
     def from_dict(cls, d: Dict[str, Any]) -> Letter:
         uploaded_by = str(d.get("uploaded_by", ""))
         owner_id = str(d.get("owner_id", "") or uploaded_by)
+        tarikh_terima = str(d.get("tarikh_terima", "") or d.get("tarikh_cop_terima", ""))
+        tarikh_daftar = str(d.get("tarikh_daftar", "") or "")
         return cls(
             letter_id=str(d.get("letter_id", "")),
             tarikh_direkod=str(d.get("tarikh_direkod", "")),
@@ -85,7 +91,9 @@ class Letter:
             mime_type=str(d.get("mime_type", "")),
             ocr_text=str(d.get("ocr_text", "")),
             tarikh_surat=str(d.get("tarikh_surat", "")),
-            tarikh_cop_terima=str(d.get("tarikh_cop_terima", "")),
+            tarikh_terima=tarikh_terima,
+            tarikh_daftar=tarikh_daftar,
+            tarikh_cop_terima=str(d.get("tarikh_cop_terima", "") or tarikh_terima),
             perkara=str(d.get("perkara", "")),
             nombor_rujukan=str(d.get("nombor_rujukan", "")),
             maklumat_pengirim=str(d.get("maklumat_pengirim", "")),
